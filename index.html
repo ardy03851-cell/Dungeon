@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!-- Viewport settings specific for iPad to prevent zooming and scrolling -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Infinite Pixel Dungeon</title>
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: #000; overflow: hidden;
+            touch-action: none; /* Prevents swipe-to-scroll on iPad */
+        }
+        canvas {
+            display: block; width: 100%; height: 100%;
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+<canvas id="lightCanvas" style="display:none;"></canvas>
+
+<script>
+/** 
+ * 1. SETUP & ENGINE SETTINGS 
+ */
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const lightCanvas = document.getElementById('lightCanvas');
+const lightCtx = lightCanvas.getContext('2d');
+
+let width = window.innerWidth;
+let height = window.innerHeight;
+canvas.width = lightCanvas.width = width;
+canvas.height = lightCanvas.height = height;
+
+// Resize handling
+window.addEventListener('resize', () => {
+    width = window.innerWidth; height = window.innerHeight;
+    canvas.width = lightCanvas.width = width;
+    canvas.height = lightCanvas.height = height;
+    ctx.imageSmoothingEnabled = false; // Keep pixel art sharp
+});
+ctx.imageSmoothingEnabled = false;
+
+const TILE_SIZE = 64; // Scaled up 16x16 pixel art
+const CAMERA = { x: 0, y: 0 };
+
+/** 
+ * 2. TEXTURE MANAGER (With Fallbacks) 
+ */
+const TEXTURES = {};
+const ASSET_NAMES = [
+    { name: 'player', color: '#3498db' },
+    { name: 'enemy', color: '#e74c3c' },
+    { name: 'floor', color: '#2c3e50' },
+    { name: 'water', color: '#2980b9' },
+    { name: 'wall', color: '#7f8c8d' },
+    { name: 'sword', color: '#f1c40f' }
+];
+
+ASSET_NAMES.forEach(asset => {
+    let img = new Image();
+    img.src = `textures/${asset.name}.png`;
+    img.fallbackColor = asset.color;
+    img.onerror = () => { img.failed = true; };
+    TEXTURES[asset.name] = img;
+});
+
+function drawSprite(context, name, x, y, w, h) {
+    let img = TEXTURES[name];
+    if (img && img.complete && !img.failed) {
+        context.drawImage(img, x, y, w, h);
+    } else {
+        context.fillStyle = img ? img.fallbackColor : '#fff';
+        context.fillRect(x, y, w, h);
+    }
+}
+
+/** 
+ * 3. INFINITE WORLD GENERATION (Pseudo-Random Noise)
+ */
+function randomHash(x, y) {
+    let h = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453123;
+    return h - Math.floor(h);
+}
+
+// 2D Value Noise for organic caves
+function noise(x, y) {
+    let ix = Math.floor(x); let iy = Math.floor(y);
+    let fx = x - ix; let fy = y - iy;
+    let ux = fx * fx * (3 - 2 * fx);
+    let uy = fy * fy * (3 - 2 * fy);
+    let a = randomHash(ix, iy);
+    let b = randomHash(ix+1, iy);
+    let c = randomHash(ix, iy+1);
+    let d = randomHash(ix+1, iy+1);
+    return a*(1-ux)*(1-uy) + b*ux*(1-uy) + c*(1-ux)*uy + d*ux*uy;
+}
+
+// Generates the tile at specific grid coordinates
+function getTileType(tx, ty) {
+    // Keep starting area clear
+    if (Math.abs(tx) < 3 && Math.abs(ty) < 3) return 'floor'; 
+    
+    let n1 = noise(tx * 0.15, ty * 0.15);
+    let n2 = noise(tx * 0.05, ty * 0.05);
+    let finalNoise = (n1 + n2) / 2;
+
+    if (finalNoise > 0.58) return 'wall';
+    if (finalNoise < 0.25) return 'water';
+    return 'floor';
+}
+
+function isWall(tx, ty) { return getTileType(tx, ty) === 'wall'; }
+function isWater(tx, ty) { return getTileType(tx, ty) === 'water'; }
+
+/** 
+ * 4. TOUCH CONTROLS (Dual Joysticks) 
+ */
+const input = {
+    move: { x: 0, y: 0, active: false, id: null, originX: 0, originY: 0 },
+    aim:  { x: 0, y: 0, active: false, id: null, originX: 0, originY: 0 }
+};
+
+function handleTouch(e) {
+    e.preventDefault();
+    for (let i = 0; i < e.changedTouches.length; i++) {
+        let t = e.changedTouches[i];
+        let isLeftScreen = t.clientX < width / 2;
+
+        if (e.type === 'touchstart') {
+            if (isLeftScreen && !input.move.active) {
+                input.move.active = true; input.move.id = t.identifier;
+                input.move.originX = t.clientX; input.move.originY = t.clientY;
+            } else if (!isLeftScreen && !input.aim.active) {
+                input.aim.active = true; input.aim.id = t.identifier;
+                input.aim.originX = t.clientX; input.aim.originY = t.clientY;
+            }
+        }
+        
+        if (e.type === 'touchmove') {
+            if (input.move.active && t.identifier === input.move.id) {
+                let dx = t.clientX - input.move.originX;
+                let dy = t.clientY - input.move.originY;
+                let dist = Math.hypot(dx, dy);
+                let maxDist = 50;
+                input.move.x = dist > maxDist ? (dx/dist) : (dx/maxDist);
+                input.move.y = dist > maxDist ? (dy/dist) : (dy/maxDist);
+            }
+            if (input.aim.active && t.identifier === input.aim.id) {
+                let dx = t.clientX - input.aim.originX;
+                let dy = t.clientY - input.aim.originY;
+                let dist = Math.hypot(dx, dy);
+                let maxDist = 50;
+                input.aim.x = dist > maxDist ? (dx/dist) : (dx/maxDist);
+                input.aim.y = dist > maxDist ? (dy/dist) : (dy/maxDist);
+            }
+        }
+
+        if (e.type === 'touchend' || e.type === 'touchcancel') {
+            if (t.identifier === input.move.id) {
+                input.move.active = false; input.move.x = 0; input.move.y = 0;
+            }
+            if (t.identifier === input.aim.id) {
+                input.aim.active = false; input.aim.x = 0; input.aim.y = 0;
+            }
+        }
+    }
+}
+window.addEventListener('touchstart', handleTouch, {passive: false});
+window.addEventListener('touchmove', handleTouch, {passive: false});
+window.addEventListener('touchend', handleTouch, {passive: false});
+window.addEventListener('touchcancel', handleTouch, {passive: false});
+
+/** 
+ * 5. ENTITIES (Player, Enemies, Projectiles) 
+ */
+class Entity {
+    constructor(x, y, size, type) {
+        this.x = x; this.y = y; this.size = size; this.type = type;
+        this.vx = 0; this.vy = 0;
+        this.hp = 100; this.maxHp = 100;
+        this.dead = false;
+    }
+    
+    checkCollision(newX, newY) {
+        // Simple AABB wall collision
+        let tx = Math.floor(newX / TILE_SIZE);
+        let ty = Math.floor(newY / TILE_SIZE);
+        return isWall(tx, ty);
+    }
+
+    move(dx, dy) {
+        if (!this.checkCollision(this.x + dx, this.y)) this.x += dx;
+        if (!this.checkCollision(this.x, this.y + dy)) this.y += dy;
+    }
+}
+
+const player = new Entity(0, 0, 32, 'player');
+let enemies = [];
+let projectiles = [];
+let attackCooldown = 0;
+
+function spawnEnemy(px, py) {
+    let angle = Math.random() * Math.PI * 2;
+    let dist = Math.random() * 500 + 400; // Spawn offscreen
+    let ex = px + Math.cos(angle) * dist;
+    let ey = py + Math.sin(angle) * dist;
+    if (!isWall(Math.floor(ex/TILE_SIZE), Math.floor(ey/TILE_SIZE))) {
+        let enemy = new Entity(ex, ey, 24, 'enemy');
+        enemy.hp = 30;
+        enemies.push(enemy);
+    }
+}
+
+/** 
+ * 6. GAME LOOP & LOGIC 
+ */
+let lastTime = 0;
+function update(dt) {
+    // Player Movement
+    let speed = 250 * dt;
+    player.move(input.move.x * speed, input.move.y * speed);
+
+    // Camera follow
+    CAMERA.x = player.x - width / 2;
+    CAMERA.y = player.y - height / 2;
+
+    // Attacking
+    if (attackCooldown > 0) attackCooldown -= dt;
+    if (input.aim.active && attackCooldown <= 0 && (Math.abs(input.aim.x) > 0.5 || Math.abs(input.aim.y) > 0.5)) {
+        let proj = new Entity(player.x, player.y, 16, 'sword');
+        proj.vx = input.aim.x * 600;
+        proj.vy = input.aim.y * 600;
+        proj.life = 0.5; // lives for 0.5 seconds
+        projectiles.push(proj);
+        attackCooldown = 0.3; // 300ms cooldown
+    }
+
+    // Update Projectiles
+    for (let i = projectiles.length - 1; i >= 0; i--) {
+        let p = projectiles[i];
+        p.life -= dt;
+        p.move(p.vx * dt, p.vy * dt);
+        if (p.life <= 0 || isWall(Math.floor(p.x/TILE_SIZE), Math.floor(p.y/TILE_SIZE))) {
+            projectiles.splice(i, 1);
+            continue;
+        }
+        
+        // Check hit enemies
+        enemies.forEach(e => {
+            let dist = Math.hypot(e.x - p.x, e.y - p.y);
+            if (dist < p.size + e.size) {
+                e.hp -= 15;
+                p.life = 0; // Destroy projectile
+            }
+        });
+    }
+
+    // Update Enemies
+    if (Math.random() < 0.02 && enemies.length < 15) spawnEnemy(player.x, player.y);
+
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        let e = enemies[i];
+        if (e.hp <= 0) { enemies.splice(i, 1); continue; }
+        
+        // Chase player
+        let dx = player.x - e.x; let dy = player.y - e.y;
+        let dist = Math.hypot(dx, dy);
+        if (dist > 10 && dist < 600) {
+            e.move((dx/dist) * 100 * dt, (dy/dist) * 100 * dt);
+        }
+
+        // Damage player
+        if (dist < player.size/2 + e.size/2) player.hp -= 10 * dt;
+    }
+}
+
+/** 
+ * 7. LIGHTING & RAYCAST SHADOWS (DDA Algorithm)
+ */
+function castRay(ox, oy, angle, maxDist) {
+    let dx = Math.cos(angle); let dy = Math.sin(angle);
+    let step = 4; // Step resolution for raycast (lower = precise but heavier)
+    let dist = 0;
+    let px = ox, py = oy;
+    
+    while(dist < maxDist) {
+        px += dx * step; py += dy * step; dist += step;
+        let tx = Math.floor(px / TILE_SIZE);
+        let ty = Math.floor(py / TILE_SIZE);
+        if (isWall(tx, ty)) return { x: px, y: py };
+    }
+    return { x: ox + dx * maxDist, y: oy + dy * maxDist };
+}
+
+function renderLighting() {
+    lightCtx.globalCompositeOperation = 'source-over';
+    lightCtx.fillStyle = 'rgba(0, 0, 0, 0.95)'; // Ambient darkness
+    lightCtx.fillRect(0, 0, width, height);
+
+    // Calculate light source on screen
+    let sx = player.x - CAMERA.x;
+    let sy = player.y - CAMERA.y;
+    let lightRadius = 400;
+
+    // Raycast lighting mask
+    lightCtx.globalCompositeOperation = 'destination-out';
+    lightCtx.beginPath();
+    lightCtx.moveTo(sx, sy);
+    
+    // Cast 180 rays around the player to find wall collisions
+    for (let i = 0; i < 360; i += 2) {
+        let rad = i * (Math.PI / 180);
+        let hit = castRay(player.x, player.y, rad, lightRadius);
+        lightCtx.lineTo(hit.x - CAMERA.x, hit.y - CAMERA.y);
+    }
+    lightCtx.fill();
+
+    // Draw glowing gradient inside the carved out mask
+    lightCtx.globalCompositeOperation = 'source-over';
+    let grad = lightCtx.createRadialGradient(sx, sy, 0, sx, sy, lightRadius);
+    grad.addColorStop(0, 'rgba(255, 255, 220, 0.2)'); // Warm center
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0.95)');       // Fade to darkness
+    
+    // Fill bounding box of light
+    lightCtx.fillStyle = grad;
+    lightCtx.fillRect(sx - lightRadius, sy - lightRadius, lightRadius*2, lightRadius*2);
+}
+
+/** 
+ * 8. RENDERING 
+ */
+function draw() {
+    ctx.clearRect(0, 0, width, height);
+    
+    let startCol = Math.floor(CAMERA.x / TILE_SIZE);
+    let endCol = startCol + (width / TILE_SIZE) + 1;
+    let startRow = Math.floor(CAMERA.y / TILE_SIZE);
+    let endRow = startRow + (height / TILE_SIZE) + 1;
+
+    // LAYER 1: Floors & Water (Background)
+    for (let c = startCol; c <= endCol; c++) {
+        for (let r = startRow; r <= endRow; r++) {
+            let type = getTileType(c, r);
+            if (type !== 'wall') {
+                drawSprite(ctx, type, c * TILE_SIZE - CAMERA.x, r * TILE_SIZE - CAMERA.y, TILE_SIZE, TILE_SIZE);
+            }
+        }
+    }
+
+    // LAYER 2: Reflections!
+    ctx.save();
+    let allEntities = [player, ...enemies, ...projectiles];
+    allEntities.forEach(ent => {
+        let tx = Math.floor(ent.x / TILE_SIZE);
+        let ty = Math.floor(ent.y / TILE_SIZE);
+        if (isWater(tx, ty)) {
+            // Draw upside down with low opacity
+            ctx.save();
+            ctx.globalAlpha = 0.3;
+            let sx = ent.x - CAMERA.x;
+            let sy = ent.y - CAMERA.y;
+            ctx.translate(sx, sy + ent.size); 
+            ctx.scale(1, -1);
+            drawSprite(ctx, ent.type, -ent.size/2, -ent.size/2, ent.size, ent.size);
+            ctx.restore();
+        }
+    });
+    ctx.restore();
+
+    // LAYER 3: Walls
+    for (let c = startCol; c <= endCol; c++) {
+        for (let r = startRow; r <= endRow; r++) {
+            if (getTileType(c, r) === 'wall') {
+                drawSprite(ctx, 'wall', c * TILE_SIZE - CAMERA.x, r * TILE_SIZE - CAMERA.y, TILE_SIZE, TILE_SIZE);
+            }
+        }
+    }
+
+    // LAYER 4: Entities
+    allEntities.forEach(ent => {
+        drawSprite(ctx, ent.type, ent.x - ent.size/2 - CAMERA.x, ent.y - ent.size/2 - CAMERA.y, ent.size, ent.size);
+        
+        // Small HP bar for enemies
+        if (ent.type === 'enemy') {
+            ctx.fillStyle = 'red';
+            ctx.fillRect(ent.x - 10 - CAMERA.x, ent.y - ent.size/2 - 10 - CAMERA.y, 20 * (ent.hp/30), 4);
+        }
+    });
+
+    // LAYER 5: Lighting & Shadows
+    renderLighting();
+    ctx.drawImage(lightCanvas, 0, 0);
+
+    // LAYER 6: UI (Joysticks & Health)
+    // Draw Player HP
+    ctx.fillStyle = 'gray'; ctx.fillRect(20, 20, 200, 20);
+    ctx.fillStyle = 'lime'; ctx.fillRect(20, 20, 200 * Math.max(0, player.hp/player.maxHp), 20);
+    ctx.strokeStyle = 'white'; ctx.strokeRect(20, 20, 200, 20);
+    ctx.fillStyle = 'white'; ctx.font = '16px monospace'; ctx.fillText('HP', 25, 35);
+
+    // Draw Virtual Joysticks
+    function drawJoy(joy) {
+        if (!joy.active) return;
+        ctx.beginPath();
+        ctx.arc(joy.originX, joy.originY, 50, 0, Math.PI*2);
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.lineWidth = 4; ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.arc(joy.originX + joy.x*50, joy.originY + joy.y*50, 25, 0, Math.PI*2);
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.fill();
+    }
+    drawJoy(input.move);
+    drawJoy(input.aim);
+    
+    // Death Screen
+    if (player.hp <= 0) {
+        ctx.fillStyle = 'rgba(150, 0, 0, 0.7)'; ctx.fillRect(0,0,width,height);
+        ctx.fillStyle = 'white'; ctx.font = '40px monospace'; ctx.textAlign = 'center';
+        ctx.fillText('YOU DIED', width/2, height/2);
+        ctx.font = '20px monospace';
+        ctx.fillText('Refresh page to restart', width/2, height/2 + 40);
+    }
+}
+
+/** 
+ * 9. MAIN LOOP 
+ */
+function loop(timestamp) {
+    if (!lastTime) lastTime = timestamp;
+    let dt = (timestamp - lastTime) / 1000;
+    lastTime = timestamp;
+    
+    // Cap dt to prevent clipping on huge lag spikes
+    if (dt > 0.1) dt = 0.1; 
+
+    if (player.hp > 0) {
+        update(dt);
+    }
+    draw();
+    
+    requestAnimationFrame(loop);
+}
+
+// Start Game
+requestAnimationFrame(loop);
+
+</script>
+</body>
+</html>
