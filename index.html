@@ -1,28 +1,39 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <!-- Viewport settings specific for iPad to prevent zooming and scrolling -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Infinite Pixel Dungeon</title>
-    <style>
-        body, html {
-            margin: 0; padding: 0; width: 100%; height: 100%;
-            background-color: #000; overflow: hidden;
-            touch-action: none; /* Prevents swipe-to-scroll on iPad */
-        }
-        canvas {
-            display: block; width: 100%; height: 100%;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <!-- Viewport settings specific for iPad to prevent zooming and scrolling -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Infinite Pixel Dungeon</title>
+  <style>
+    body,
+    html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #000;
+      overflow: hidden;
+      touch-action: none;
+      /* Prevents swipe-to-scroll on iPad */
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
 </head>
+
 <body>
 
-<canvas id="gameCanvas"></canvas>
-<canvas id="lightCanvas" style="display:none;"></canvas>
+  <canvas id="gameCanvas"></canvas>
+  <canvas id="lightCanvas" style="display:none;"></canvas>
 
-<script>
-/** 
+  <script>
+    /** 
  * 1. SETUP & ENGINE SETTINGS 
  */
 const canvas = document.getElementById('gameCanvas');
@@ -224,9 +235,11 @@ function update(dt) {
     let speed = 250 * dt;
     player.move(input.move.x * speed, input.move.y * speed);
 
-    // Camera follow
-    CAMERA.x = player.x - width / 2;
-    CAMERA.y = player.y - height / 2;
+    // Smooth camera follow for an enhanced indie game feel
+    let targetCamX = player.x - width / 2;
+    let targetCamY = player.y - height / 2;
+    CAMERA.x += (targetCamX - CAMERA.x) * Math.min(1, 8 * dt);
+    CAMERA.y += (targetCamY - CAMERA.y) * Math.min(1, 8 * dt);
 
     // Attacking
     if (attackCooldown > 0) attackCooldown -= dt;
@@ -297,9 +310,9 @@ function castRay(ox, oy, angle, maxDist) {
 }
 
 function renderLighting() {
-    lightCtx.globalCompositeOperation = 'source-over';
-    lightCtx.fillStyle = 'rgba(0, 0, 0, 0.95)'; // Ambient darkness
-    lightCtx.fillRect(0, 0, width, height);
+    lightCtx.globalCompositeOperation = 'source-over';
+    lightCtx.fillStyle = 'rgba(0, 0, 0, 0.65)'; // Ambient darkness adjusted so wall textures remain visible in shadows
+    lightCtx.fillRect(0, 0, width, height);
 
     // Calculate light source on screen
     let sx = player.x - CAMERA.x;
@@ -450,6 +463,7 @@ function loop(timestamp) {
 // Start Game
 requestAnimationFrame(loop);
 
-</script>
+  </script>
 </body>
+
 </html>
