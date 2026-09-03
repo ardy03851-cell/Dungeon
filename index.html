@@ -357,14 +357,7 @@ function renderLighting() {
     }
     lightCtx.fill();
 
-    // Punch holes in darkness for torch projectiles
-    projectiles.forEach(p => {
-        let psx = p.x - CAMERA.x;
-        let psy = p.y - CAMERA.y;
-        lightCtx.beginPath();
-        lightCtx.arc(psx, psy, 100, 0, Math.PI * 2);
-        lightCtx.fill();
-    });
+    // Stable and clean lighting render
 
     // Draw glowing gradient inside the carved out mask
     lightCtx.globalCompositeOperation = 'source-over';
@@ -375,17 +368,6 @@ function renderLighting() {
     // Fill bounding box of light
     lightCtx.fillStyle = grad;
     lightCtx.fillRect(sx - lightRadius, sy - lightRadius, lightRadius*2, lightRadius*2);
-    // Draw warm torch glows on light canvas
-    projectiles.forEach(p => {
-        let psx = p.x - CAMERA.x;
-        let psy = p.y - CAMERA.y;
-        let pRadius = 100;
-        let pGrad = lightCtx.createRadialGradient(psx, psy, 0, psx, psy, pRadius);
-        pGrad.addColorStop(0, 'rgba(255, 180, 50, 0.4)');
-        pGrad.addColorStop(1, 'rgba(0, 0, 0, 0.95)');
-        lightCtx.fillStyle = pGrad;
-        lightCtx.fillRect(psx - pRadius, psy - pRadius, pRadius * 2, pRadius * 2);
-    });
 }
 
 /** 
