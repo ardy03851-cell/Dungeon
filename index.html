@@ -242,21 +242,45 @@ function update(dt) {
     CAMERA.y += (targetCamY - CAMERA.y) * Math.min(1, 8 * dt);
 
     // Attacking
-    if (attackCooldown > 0) attackCooldown -= dt;
-    if (input.aim.active && attackCooldown <= 0 && (Math.abs(input.aim.x) > 0.5 || Math.abs(input.aim.y) > 0.5)) {
-        let proj = new Entity(player.x, player.y, 16, 'sword');
-        proj.vx = input.aim.x * 600;
-        proj.vy = input.aim.y * 600;
-        proj.life = 0.5; // lives for 0.5 seconds
-        projectiles.push(proj);
-        attackCooldown = 0.3; // 300ms cooldown
-    }
+    if (attackCooldown > 0) attackCooldown -= dt;
+    if (input.aim.active && attackCooldown <= 0 && (Math.abs(input.aim.x) > 0.5 || Math.abs(input.aim.y) > 0.5)) {
+        let proj = new Entity(player.x, player.y, 22, 'sword');
+        proj.vx = input.aim.x * 600;
+        proj.vy = input.aim.y * 600;
+        proj.rotation = 0;
+        proj.life = 0.5; // lives for 0.5 seconds
+        projectiles.push(proj);
+        attackCooldown = 0.3; // 300ms cooldown
+    }
 
     // Update Projectiles
     for (let i = projectiles.length - 1; i >= 0; i--) {
         let p = projectiles[i];
         p.life -= dt;
+        p.rotation += 18 * dt;
         p.move(p.vx * dt, p.vy * dt);
+        
+        // Indie spark trail particles
+        if (!p.particles) p.particles = [];
+        if (Math.random() < 0.7) {
+            p.particles.push({
+                x: p.x + (Math.random() - 0.5) * 8,
+                y: p.y + (Math.random() - 0.5) * 8,
+                vx: -p.vx * 0.15 + (Math.random() - 0.5) * 30,
+                vy: -p.vy * 0.15 + (Math.random() - 0.5) * 30,
+                life: 0.25,
+                maxLife: 0.25,
+                size: Math.random() * 3 + 2
+            });
+        }
+        for (let j = p.particles.length - 1; j >= 0; j--) {
+            let pt = p.particles[j];
+            pt.life -= dt;
+            pt.x += pt.vx * dt;
+            pt.y += pt.vy * dt;
+            if (pt.life <= 0) p.particles.splice(j, 1);
+        }
+
         if (p.life <= 0 || isWall(Math.floor(p.x/TILE_SIZE), Math.floor(p.y/TILE_SIZE))) {
             projectiles.splice(i, 1);
             continue;
@@ -310,6 +334,7 @@ function castRay(ox, oy, angle, maxDist) {
 }
 
 function renderLighting() {
+    lightCtx.clearRect(0, 0, width, height);
     lightCtx.globalCompositeOperation = 'source-over';
     lightCtx.fillStyle = 'rgba(0, 0, 0, 0.65)'; // Ambient darkness adjusted so wall textures remain visible in shadows
     lightCtx.fillRect(0, 0, width, height);
@@ -332,6 +357,15 @@ function renderLighting() {
     }
     lightCtx.fill();
 
+    // Punch holes in darkness for torch projectiles
+    projectiles.forEach(p => {
+        let psx = p.x - CAMERA.x;
+        let psy = p.y - CAMERA.y;
+        lightCtx.beginPath();
+        lightCtx.arc(psx, psy, 100, 0, Math.PI * 2);
+        lightCtx.fill();
+    });
+
     // Draw glowing gradient inside the carved out mask
     lightCtx.globalCompositeOperation = 'source-over';
     let grad = lightCtx.createRadialGradient(sx, sy, 0, sx, sy, lightRadius);
@@ -341,6 +375,17 @@ function renderLighting() {
     // Fill bounding box of light
     lightCtx.fillStyle = grad;
     lightCtx.fillRect(sx - lightRadius, sy - lightRadius, lightRadius*2, lightRadius*2);
+    // Draw warm torch glows on light canvas
+    projectiles.forEach(p => {
+        let psx = p.x - CAMERA.x;
+        let psy = p.y - CAMERA.y;
+        let pRadius = 100;
+        let pGrad = lightCtx.createRadialGradient(psx, psy, 0, psx, psy, pRadius);
+        pGrad.addColorStop(0, 'rgba(255, 180, 50, 0.4)');
+        pGrad.addColorStop(1, 'rgba(0, 0, 0, 0.95)');
+        lightCtx.fillStyle = pGrad;
+        lightCtx.fillRect(psx - pRadius, psy - pRadius, pRadius * 2, pRadius * 2);
+    });
 }
 
 /** 
@@ -378,7 +423,12 @@ function draw() {
             let sy = ent.y - CAMERA.y;
             ctx.translate(sx, sy + ent.size); 
             ctx.scale(1, -1);
-            drawSprite(ctx, ent.type, -ent.size/2, -ent.size/2, ent.size, ent.size);
+            if (ent.type === 'sword') {
+                ctx.rotate(ent.rotation);
+                drawSprite(ctx, ent.type, -ent.size/2, -ent.size/2, ent.size, ent.size);
+            } else {
+                drawSprite(ctx, ent.type, -ent.size/2, -ent.size/2, ent.size, ent.size);
+            }
             ctx.restore();
         }
     });
@@ -395,7 +445,43 @@ function draw() {
 
     // LAYER 4: Entities
     allEntities.forEach(ent => {
-        drawSprite(ctx, ent.type, ent.x - ent.size/2 - CAMERA.x, ent.y - ent.size/2 - CAMERA.y, ent.size, ent.size);
+        if (ent.type === 'sword') {
+            ctx.save();
+            ctx.translate(ent.x - CAMERA.x, ent.y - CAMERA.y);
+            ctx.rotate(ent.rotation);
+            drawSprite(ctx, ent.type, -ent.size/2, -ent.size/2, ent.size, ent.size);
+            ctx.restore();
+
+            // Torch light glow effect
+            let flicker = 1 + Math.sin(Date.now() * 0.02) * 0.15;
+            let glowRadius = 70 * flicker;
+            let grad = ctx.createRadialGradient(ent.x - CAMERA.x, ent.y - CAMERA.y, 0, ent.x - CAMERA.x, ent.y - CAMERA.y, glowRadius);
+            grad.addColorStop(0, 'rgba(255, 180, 50, 0.7)');
+            grad.addColorStop(1, 'rgba(255, 100, 0, 0)');
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(ent.x - CAMERA.x, ent.y - CAMERA.y, glowRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // Render spark particles
+            if (ent.particles) {
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                ent.particles.forEach(pt => {
+                    let alpha = pt.life / pt.maxLife;
+                    ctx.fillStyle = `rgba(255, ${Math.floor(120 + alpha * 135)}, 0, ${alpha})`;
+                    ctx.beginPath();
+                    ctx.arc(pt.x - CAMERA.x, pt.y - CAMERA.y, pt.size * alpha, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                ctx.restore();
+            }
+        } else {
+            drawSprite(ctx, ent.type, ent.x - ent.size/2 - CAMERA.x, ent.y - ent.size/2 - CAMERA.y, ent.size, ent.size);
+        }
         
         // Small HP bar for enemies
         if (ent.type === 'enemy') {
