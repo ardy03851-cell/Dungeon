@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>folk valley fella</title>
+<title>Guy the Folk Valley</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 html,body{
@@ -18,16 +18,18 @@ html,body{
 #game{position:fixed;inset:0;}
 #game canvas{display:block;width:100%!important;height:100%!important;image-rendering:pixelated;}
 
-/* ---------- HUD (hidden until Play) ---------- */
 .hud-el { display: none; }
 body.playing .hud-el { display: block; }
 
 #hud{
   position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);
   left:calc(env(safe-area-inset-left,0px) + 10px);
-  font-size:12px;line-height:1.55;background:rgba(0,0,0,.45);
+  font-size:12px;line-height:1.55;background:rgba(0,0,0,.5);
   padding:8px 12px;border-radius:8px;pointer-events:none;
   text-shadow:0 1px 0 rgba(0,0,0,.7);letter-spacing:.5px;
+  border:1px solid rgba(255,255,255,.1);
+  backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
 }
 #hud .k{color:#8fb8ff;}
 #hud .v{color:#ffe07a;}
@@ -36,62 +38,86 @@ body.playing .hud-el { display: block; }
 #inv{
   position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);
   left:50%;transform:translateX(-50%);
-  font-size:12px;line-height:1.6;background:rgba(0,0,0,.45);
-  padding:6px 14px;border-radius:8px;pointer-events:none;
+  font-size:12px;line-height:1.6;background:rgba(0,0,0,.5);
+  padding:8px 16px;border-radius:10px;pointer-events:none;
   text-shadow:0 1px 0 rgba(0,0,0,.7);white-space:nowrap;
+  border:1px solid rgba(255,255,255,.1);
+  backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
+  display:none;
 }
-#inv span{color:#ffe07a;font-weight:bold;}
+body.playing #inv{display:flex;gap:12px;align-items:center;}
+.inv-item{
+  display:inline-flex;align-items:center;gap:5px;
+}
+.inv-icon{
+  width:14px;height:14px;border-radius:3px;display:inline-block;
+  box-shadow:0 0 0 1px rgba(0,0,0,.5);
+}
+.inv-icon.coin{background:#ffd94a;}
+.inv-icon.potion{background:#e04a4a;}
+.inv-icon.gem{background:#3fd0ee;}
+.inv-icon.chest{background:#8a5a28;}
+.inv-item span.v{color:#ffe07a;font-weight:bold;}
 
 #minimap{
   position:fixed;right:calc(env(safe-area-inset-right,0px) + 10px);
   bottom:calc(env(safe-area-inset-bottom,0px) + 10px);
-  width:110px;height:110px;border:2px solid rgba(255,255,255,.35);
-  border-radius:8px;background:rgba(0,0,0,.55);
+  width:130px;height:130px;border:2px solid rgba(255,255,255,.35);
+  border-radius:10px;background:rgba(0,0,0,.6);
   image-rendering:pixelated;pointer-events:none;
+  box-shadow:0 4px 12px rgba(0,0,0,.5);
 }
 
 #stick{
   position:fixed;width:120px;height:120px;border-radius:50%;
-  border:2px solid rgba(255,255,255,.3);background:rgba(255,255,255,.08);
+  border:2px solid rgba(255,255,255,.35);background:rgba(255,255,255,.08);
   display:none;pointer-events:none;transform:translate(-50%,-50%);
   z-index:5;
 }
 #knob{
   position:absolute;width:50px;height:50px;border-radius:50%;
-  background:rgba(255,255,255,.4);border:2px solid rgba(255,255,255,.55);
+  background:rgba(255,255,255,.45);border:2px solid rgba(255,255,255,.65);
   transform:translate(-50%,-50%);left:60px;top:60px;
 }
 #hint{
   position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);
-  transform:translateX(-50%);font-size:11px;opacity:.75;pointer-events:none;
-  background:rgba(0,0,0,.4);padding:6px 12px;border-radius:6px;
+  transform:translateX(-50%);font-size:11px;opacity:.8;pointer-events:none;
+  background:rgba(0,0,0,.5);padding:7px 14px;border-radius:8px;
   letter-spacing:1px;transition:opacity .8s;z-index:5;
+  border:1px solid rgba(255,255,255,.1);
 }
 
-#fpToggle{
+#actionRow{
   position:fixed;
   left:calc(env(safe-area-inset-left,0px) + 10px);
   bottom:calc(env(safe-area-inset-bottom,0px) + 10px);
-  padding:12px 18px;
+  display:flex;flex-direction:column;gap:8px;
+  z-index:6;
+}
+.action-btn{
   font-family:inherit;font-weight:bold;font-size:13px;
   letter-spacing:2px;color:#fff;
+  padding:12px 18px;min-width:130px;
   background:linear-gradient(#4a6ab8,#2d4380);
   border:3px solid #000;
   box-shadow:
     inset -3px -3px 0 rgba(0,0,0,.35),
     inset 3px 3px 0 rgba(255,255,255,.25),
     4px 4px 0 rgba(0,0,0,.5);
-  cursor:pointer;z-index:6;
+  cursor:pointer;
   -webkit-appearance:none;
   text-shadow:1px 1px 0 rgba(0,0,0,.7);
+  touch-action:manipulation;
 }
-#fpToggle:active{
+.action-btn:active{
   transform:translate(2px,2px);
   box-shadow:
     inset -2px -2px 0 rgba(0,0,0,.35),
     inset 2px 2px 0 rgba(255,255,255,.25),
     2px 2px 0 rgba(0,0,0,.5);
 }
+.action-btn.fp-on{background:linear-gradient(#c47b3a,#7a4a20);}
 
 #crosshair{
   position:fixed;left:50%;top:50%;
@@ -114,7 +140,6 @@ body.fp #crosshair{display:block;}
   position:fixed;inset:0;z-index:100;
   display:flex;align-items:center;justify-content:center;
   background-color:#162138;
-  background-image:none;
   background-size:cover;background-position:center;background-repeat:no-repeat;
   image-rendering:pixelated;
   transition:opacity .45s ease;
@@ -123,43 +148,58 @@ body.fp #crosshair{display:block;}
 #menu::before{
   content:'';position:absolute;inset:0;
   background:
-    radial-gradient(circle at center, rgba(0,0,0,.15) 30%, rgba(0,0,0,.85) 100%),
-    linear-gradient(180deg, rgba(0,0,0,.35) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0) 60%, rgba(0,0,0,.55) 100%);
+    radial-gradient(circle at center, rgba(0,0,0,.1) 25%, rgba(0,0,0,.85) 100%),
+    linear-gradient(180deg, rgba(0,0,0,.35) 0%, rgba(0,0,0,0) 35%, rgba(0,0,0,0) 55%, rgba(0,0,0,.6) 100%);
   pointer-events:none;
 }
 #menuContent{
   position:relative;
   display:flex;flex-direction:column;align-items:center;
   gap:14px;padding:32px;
-  animation:menuIn .5s ease both;
+  animation:menuIn .55s ease both;
 }
 @keyframes menuIn{
-  from { opacity:0; transform:translateY(14px); }
+  from { opacity:0; transform:translateY(18px); }
   to   { opacity:1; transform:translateY(0); }
 }
 #menu h1{
-  font-family:inherit;font-size:clamp(36px,8vw,60px);
-  font-weight:900;color:#fff;letter-spacing:6px;
-  text-align:center;
+  font-family:inherit;font-weight:900;
+  color:#fff;
   text-shadow:
-    3px 3px 0 #000,
-   -3px 3px 0 #000,
-    3px -3px 0 #000,
-   -3px -3px 0 #000,
-    6px 6px 0 rgba(0,0,0,.55);
-  margin-bottom:-6px;
+    4px 4px 0 #000,
+   -2px 4px 0 #000,
+    4px -2px 0 #000,
+   -2px -2px 0 #000,
+    8px 8px 0 rgba(0,0,0,.55);
+  line-height:.95;
+  text-align:center;
+  letter-spacing:4px;
 }
-#menu .subtitle{
-  font-size:clamp(14px,3vw,20px);letter-spacing:12px;
-  color:#ffe07a;margin-bottom:8px;font-weight:bold;
-  text-shadow:2px 2px 0 rgba(0,0,0,.9);
+#menu h1 .line1{
+  display:block;
+  font-size:clamp(64px,14vw,120px);
+  color:#ffe07a;
+  letter-spacing:8px;
+}
+#menu h1 .line2{
+  display:block;
+  font-size:clamp(20px,4.5vw,38px);
+  letter-spacing:6px;
+  color:#fff;
+  margin-top:6px;
 }
 #menu .splash{
-  position:absolute;top:-10px;right:-10px;
-  color:#ffea4a;font-weight:bold;font-size:14px;
-  transform:rotate(-20deg);
+  position:absolute;top:6px;right:-4px;
+  color:#ffea4a;font-weight:bold;font-size:13px;
+  transform:rotate(-18deg);
   text-shadow:2px 2px 0 #000;
   pointer-events:none;
+  animation:splashPulse 1.2s ease-in-out infinite;
+  white-space:nowrap;
+}
+@keyframes splashPulse{
+  0%,100%{transform:rotate(-18deg) scale(1);}
+  50%{transform:rotate(-18deg) scale(1.08);}
 }
 .mc-btn{
   font-family:inherit;font-size:20px;font-weight:bold;
@@ -167,7 +207,7 @@ body.fp #crosshair{display:block;}
   text-shadow:2px 2px 0 rgba(0,0,0,.9);
   padding:14px 44px;
   border:3px solid #000;
-  min-width:280px;
+  min-width:300px;
   cursor:pointer;
   box-shadow:
     inset -3px -3px 0 rgba(0,0,0,.35),
@@ -182,6 +222,7 @@ body.fp #crosshair{display:block;}
 .mc-btn.modding{
   background:linear-gradient(#9a9a9a,#5a5a5a);
   cursor:not-allowed;opacity:.55;
+  font-size:16px;min-width:300px;padding:11px 44px;
 }
 .mc-btn:active:not(:disabled){
   transform:translate(3px,3px);
@@ -191,16 +232,24 @@ body.fp #crosshair{display:block;}
     2px 2px 0 rgba(0,0,0,.6);
 }
 #menu .footer{
-  margin-top:8px;font-size:10px;letter-spacing:2px;
+  margin-top:10px;font-size:10px;letter-spacing:2px;
   color:rgba(255,255,255,.55);
   text-shadow:1px 1px 0 rgba(0,0,0,.8);
 }
 #menu .mod-note{
-  position:absolute;bottom:-28px;left:50%;transform:translateX(-50%);
+  position:absolute;bottom:-30px;left:50%;transform:translateX(-50%);
   font-size:10px;color:#ff8b8b;letter-spacing:1px;white-space:nowrap;
   opacity:0;transition:opacity .3s;
 }
 #menu .mod-note.show{opacity:1;}
+#menu .tex-status{
+  position:absolute;bottom:-56px;left:50%;transform:translateX(-50%);
+  font-size:10px;color:rgba(255,255,255,.5);
+  letter-spacing:1px;white-space:nowrap;
+  text-shadow:1px 1px 0 rgba(0,0,0,.9);
+}
+#menu .tex-status .ok{color:#7cffa0;}
+#menu .tex-status .miss{color:#ffb84d;}
 
 /* ---------- BOOT ---------- */
 #boot{
@@ -210,30 +259,38 @@ body.fp #crosshair{display:block;}
   transition:opacity .4s ease;
 }
 #boot.hide{opacity:0;pointer-events:none;}
-#boot .bar{width:260px;height:6px;background:#1a2236;border:2px solid #2b3a5a;}
+#boot .bar{width:280px;height:6px;background:#1a2236;border:2px solid #2b3a5a;}
 #boot .bar i{display:block;height:100%;width:0%;background:#6fa8ff;transition:width .3s ease;}
 #boot small{opacity:.5;font-size:10px;letter-spacing:1px;}
 #boot .err{color:#ff8b8b;font-size:11px;max-width:340px;line-height:1.6;
   text-align:left;word-break:break-word;font-family:monospace;}
+#boot .tex-list{
+  font-size:10px;line-height:1.5;color:rgba(255,255,255,.55);
+  text-align:left;max-width:300px;width:100%;font-family:monospace;
+  max-height:150px;overflow:hidden;margin-top:6px;
+}
+#boot .tex-list .ok{color:#7cffa0;}
+#boot .tex-list .miss{color:#ffb84d;}
 
 #toast{
   position:fixed;left:50%;top:22%;transform:translateX(-50%);
-  font-size:16px;background:rgba(0,0,0,.72);padding:10px 20px;
+  font-size:16px;background:rgba(0,0,0,.78);padding:12px 22px;
   border-radius:10px;pointer-events:none;opacity:0;
-  transition:opacity .3s;color:#ffe07a;
+  transition:opacity .3s, transform .3s;color:#ffe07a;
   letter-spacing:2px;font-weight:bold;z-index:50;
+  border:2px solid rgba(255,224,122,.4);
+  box-shadow:0 6px 20px rgba(0,0,0,.6);
+  transform:translate(-50%,-6px);
 }
-#toast.show{opacity:1;}
+#toast.show{opacity:1;transform:translate(-50%,0);}
 </style>
 </head>
 <body>
 
 <div id="game"></div>
 
-<!-- Crosshair (only in FP) -->
 <div id="crosshair" class="hud-el"></div>
 
-<!-- HUD (only while playing) -->
 <div id="hud" class="hud-el">
   <div><span class="k">MODE</span> <span class="v mode" id="hudMode">--</span></div>
   <div><span class="k">POS </span> <span class="v" id="hudPos">0, 0</span></div>
@@ -243,36 +300,41 @@ body.fp #crosshair{display:block;}
 </div>
 
 <div id="inv" class="hud-el">
-  <span id="invCoins">0</span> coins ·
-  <span id="invPotions">0</span> potions ·
-  <span id="invGems">0</span> gems ·
-  <span id="invChests">0</span> chests
+  <span class="inv-item"><span class="inv-icon coin"></span><span class="v" id="invCoins">0</span></span>
+  <span class="inv-item"><span class="inv-icon potion"></span><span class="v" id="invPotions">0</span></span>
+  <span class="inv-item"><span class="inv-icon gem"></span><span class="v" id="invGems">0</span></span>
+  <span class="inv-item"><span class="inv-icon chest"></span><span class="v" id="invChests">0</span></span>
 </div>
 
-<canvas id="minimap" class="hud-el" width="110" height="110"></canvas>
-<button id="fpToggle" class="hud-el">VIEW: 3RD</button>
+<canvas id="minimap" class="hud-el" width="130" height="130"></canvas>
+
+<div id="actionRow" class="hud-el">
+  <button id="fpToggle" class="action-btn">VIEW: 3RD</button>
+</div>
 
 <div id="stick"><div id="knob"></div></div>
-<div id="hint" class="hud-el">LEFT DRAG = MOVE · RIGHT DRAG = LOOK · PINCH = ZOOM · F = 1ST PERSON</div>
+<div id="hint" class="hud-el">LEFT = MOVE · RIGHT = LOOK · PINCH = ZOOM · F = 1ST PERSON</div>
 
-<!-- MENU -->
 <div id="menu" class="hidden">
   <div id="menuContent">
-    <h1>PIXEL REALM</h1>
-    <div class="subtitle">3D</div>
-    <span class="splash">now with 1st person!</span>
+    <h1>
+      <span class="line1">GUY</span>
+      <span class="line2">THE FOLK VALLEY</span>
+    </h1>
+    <span class="splash">now with crystals!</span>
     <button id="playBtn" class="mc-btn play">PLAY</button>
     <button id="modBtn" class="mc-btn modding" disabled>MODDING</button>
-    <p class="footer">A small voxel adventure</p>
+    <p class="footer">a small voxel adventure</p>
     <span class="mod-note" id="modNote">Modding coming soon</span>
+    <span class="tex-status" id="texStatus"></span>
   </div>
 </div>
 
-<!-- BOOT -->
 <div id="boot">
   <div id="bootMsg">LOADING…</div>
   <div class="bar"><i id="bootBar"></i></div>
-  <small>PIXEL REALM 3D</small>
+  <small>GUY THE FOLK VALLEY</small>
+  <div class="tex-list" id="bootTexList"></div>
   <div class="err" id="bootErr"></div>
 </div>
 
@@ -296,8 +358,8 @@ if (typeof THREE === 'undefined') {
 
 /* ============================================================ UI */
 var $ = function(id){ return document.getElementById(id); };
-var bootEl=$('boot'), bootMsg=$('bootMsg'), bootBar=$('bootBar'), bootErr=$('bootErr');
-var menuEl=$('menu'), playBtn=$('playBtn'), modBtn=$('modBtn'), modNote=$('modNote');
+var bootEl=$('boot'), bootMsg=$('bootMsg'), bootBar=$('bootBar'), bootErr=$('bootErr'), bootTexList=$('bootTexList');
+var menuEl=$('menu'), playBtn=$('playBtn'), modBtn=$('modBtn'), modNote=$('modNote'), texStatusEl=$('texStatus');
 var hudMode=$('hudMode'), hudPos=$('hudPos'), hudAlt=$('hudAlt'),
     hudTime=$('hudTime'), hudFps=$('hudFps');
 var stickEl=$('stick'), knobEl=$('knob'), hintEl=$('hint'), toastEl=$('toast');
@@ -326,7 +388,6 @@ console.log('[env] iframe='+inIframe+' dpr='+(window.devicePixelRatio||1));
 
 /* ============================================================ CONFIG */
 var SEED = 1337;
-
 var CHUNK       = 16;
 var CHUNK_RES   = 20;
 var VIEW_RADIUS = 4;
@@ -343,20 +404,16 @@ var CAM_DIST_MAX = 22;
 var CAM_DIST_DEF = 12;
 var CAM_LOOK_K   = 1.4;
 
-/* Pitch limits (radians). Positive pitch = looking UP. */
 var PITCH_MIN_TP = -1.25;
 var PITCH_MAX_TP =  0.55;
 var PITCH_MIN_FP = -1.45;
 var PITCH_MAX_FP =  1.45;
-
 var FP_EYE_HEIGHT = 1.55;
 
 var FOG_NEAR = 40;
 var FOG_FAR  = 95;
-
 var DAY_LENGTH = 90;
 
-/* Texture paths the game will probe. Order shown in logs. */
 var TEX_PATHS = [
   'assets/bg.png',
   'assets/grass.png',
@@ -401,23 +458,55 @@ function fbm(x,y,s,oct){
 }
 
 /* ============================================================ TERRAIN */
+/* Layers:
+   - continents (very slow)
+   - rolling hills
+   - mountain ridges (ridged noise)
+   - flat-topped plateaus
+   - sharp canyons carved by a narrow noise band
+   - spawn plateau near origin
+*/
 function baseHeight(x, z) {
   var d = Math.sqrt(x*x + z*z);
-  var spawnBoost = Math.max(0, 1 - d / 45) * 3.5;
+  var spawnBoost = Math.max(0, 1 - d / 50) * 3.0;
 
+  // Continents
   var cont = fbm(x*0.006, z*0.006, SEED, 4);
   var land = (cont - 0.34) * 30 + 1.5 + spawnBoost;
 
+  // Mountains
   var r = fbm(x*0.011, z*0.011, SEED+555, 3);
   var ridged = 1 - Math.abs(r*2 - 1);
   ridged = ridged * ridged;
   var mountainAmp = Math.max(0, (cont - 0.48) * 5);
   var mountain = ridged * 18 * mountainAmp;
 
+  // Plateaus: wide flat regions that lift the surface
+  var platN = fbm(x*0.018, z*0.018, SEED+3333, 3);
+  var plateau = 0;
+  if (platN > 0.60) {
+    var pt = smoothstep(0.60, 0.72, platN);
+    plateau = pt * 7.0;
+    // flatten by blending toward a fixed value within the plateau band
+    var flatten = smoothstep(0.62, 0.70, platN);
+    var hillDamp = (fbm(x*0.038, z*0.038, SEED+777, 3) - 0.5) * 3.5 * (1 - flatten * 0.85);
+    plateau += (hillDamp - ((fbm(x*0.038, z*0.038, SEED+777, 3) - 0.5) * 3.5)) * 0;
+  }
+
+  // Canyons: carve deep gorges where a narrow noise band crosses
+  var canyonN = fbm(x*0.022, z*0.022, SEED+4444, 3);
+  var distToLine = Math.abs(canyonN - 0.5);
+  var canyonCut = 0;
+  if (distToLine < 0.028) {
+    canyonCut = (1 - distToLine / 0.028) * 6.5;
+    canyonCut = canyonCut * smoothstep(0.0, 0.5, land); // only carve on land
+  }
+
+  // Hills & detail
   var hill   = (fbm(x*0.038, z*0.038, SEED+777, 3) - 0.5) * 3.5;
   var detail = (fbm(x*0.13,  z*0.13,  SEED+999, 2) - 0.5) * 1.0;
 
-  return land + mountain + hill + detail;
+  return land + mountain + plateau + hill + detail - canyonCut;
 }
 
 var _hcache = new Map();
@@ -475,34 +564,19 @@ function colorAt(x, z, h) {
   return [r*tint, g*tint, b*tint];
 }
 
-/* ============================================================ TEXTURE PROBE */
-function probeTexture(src) {
-  return new Promise(function(resolve){
-    var img = new Image();
-    img.crossOrigin = 'anonymous';
-    var done = false;
-    var timeout = setTimeout(function(){
-      if (!done) { done = true; resolve({ ok:false, src:src, reason:'timeout' }); }
-    }, 5000);
-    img.onload = function(){
-      if (done) return;
-      done = true; clearTimeout(timeout);
-      resolve({ ok:true, src:src, img:img, w:img.width, h:img.height });
-    };
-    img.onerror = function(){
-      if (done) return;
-      done = true; clearTimeout(timeout);
-      resolve({ ok:false, src:src, reason:'load error' });
-    };
-    img.src = src;
-  });
-}
-function probeAllTextures(paths) {
-  return Promise.all(paths.map(probeTexture)).then(function(results){
-    var map = {};
-    results.forEach(function(r){ map[r.src] = r; });
-    return map;
-  });
+/* Ground type for particle colors */
+function groundTypeAt(x, z) {
+  var h = heightAt(x, z);
+  if (h < SEA_LEVEL) return 'water';
+  if (h < 1) return 'sand';
+  if (h < 8) {
+    var c = climateAt(x, z);
+    if (c.temp > 0.56 && c.moist < 0.44) return 'sand';
+    if (c.moist > 0.58) return 'forest';
+    return 'grass';
+  }
+  if (h < 13) return 'stone';
+  return 'snow';
 }
 
 /* ============================================================ RENDERER */
@@ -538,12 +612,39 @@ function createRenderer() {
   return null;
 }
 
+/* ============================================================ TEXTURE PROBE */
+function probeTexture(src) {
+  return new Promise(function(resolve){
+    var img = new Image();
+    img.crossOrigin = 'anonymous';
+    var done = false;
+    var t = setTimeout(function(){
+      if (!done) { done = true; resolve({ ok:false, src:src, reason:'timeout' }); }
+    }, 5000);
+    img.onload = function(){
+      if (done) return;
+      done = true; clearTimeout(t);
+      resolve({ ok:true, src:src, img:img, w:img.width, h:img.height });
+    };
+    img.onerror = function(){
+      if (done) return;
+      done = true; clearTimeout(t);
+      resolve({ ok:false, src:src, reason:'load error' });
+    };
+    img.src = src;
+  });
+}
+function probeAllTextures(paths) {
+  return Promise.all(paths.map(probeTexture)).then(function(results){
+    var map = {};
+    results.forEach(function(r){ map[r.src] = r; });
+    return map;
+  });
+}
+
 /* ============================================================ TEXTURE APPLY */
 function applyProbedTexture(material, result) {
-  if (!result || !result.ok) {
-    console.warn('[tex FALLBACK] ' + (result ? result.src : '?'));
-    return;
-  }
+  if (!result || !result.ok) return;
   var t = new THREE.Texture(result.img);
   t.magFilter = THREE.NearestFilter;
   t.minFilter = THREE.NearestFilter;
@@ -555,10 +656,7 @@ function applyProbedTexture(material, result) {
   console.log('[tex APPLIED] ' + result.src + '  ' + result.w + 'x' + result.h);
 }
 function applyProbedSprite(material, result) {
-  if (!result || !result.ok) {
-    console.warn('[sprite FALLBACK] ' + (result ? result.src : '?'));
-    return;
-  }
+  if (!result || !result.ok) return;
   var t = new THREE.Texture(result.img);
   t.magFilter = THREE.NearestFilter;
   t.minFilter = THREE.NearestFilter;
@@ -569,10 +667,7 @@ function applyProbedSprite(material, result) {
   console.log('[sprite APPLIED] ' + result.src + '  ' + result.w + 'x' + result.h);
 }
 function applyPlayerTexture(result, sprite) {
-  if (!result || !result.ok) {
-    console.warn('[player FALLBACK]');
-    return;
-  }
+  if (!result || !result.ok) return;
   cropTransparent(result.img, function(cropped, cw, ch){
     var tex = new THREE.Texture(cropped);
     tex.magFilter = THREE.NearestFilter;
@@ -744,7 +839,7 @@ function sfxPickup(){
   beep(880, 0.08, 'sine', 0.05);
   setTimeout(function(){ beep(1320, 0.12, 'sine', 0.05); }, 60);
 }
-function sfxStep(){ beep(150 + Math.random()*60, 0.04, 'triangle', 0.02); }
+function sfxStep(){ beep(150 + Math.random()*60, 0.04, 'triangle', 0.018); }
 
 /* ============================================================ GEOMETRY ACCUM */
 function GeoAccum() { this.pos=[]; this.nor=[]; this.uv=[]; this.col=[]; this.idx=[]; }
@@ -776,7 +871,7 @@ GeoAccum.prototype.toGeometry = function() {
   return g;
 };
 
-/* ============================================================ FEATURES */
+/* ============================================================ FEATURE TESTS */
 function hasTreeAt(x, z) {
   var h = heightAt(x, z);
   if (h < 2.2 || h > 12) return false;
@@ -794,6 +889,37 @@ function itemTypeAt(x, z) {
   var r = hash2(Math.floor(x), Math.floor(z), SEED+7777);
   return r < 0.55 ? 'coin' : r < 0.78 ? 'potion' : r < 0.94 ? 'gem' : 'chest';
 }
+function hasCrystalAt(x, z) {
+  var h = heightAt(x, z);
+  if (h < 11) return false;
+  return hash2(Math.floor(x), Math.floor(z), SEED+6100) > 0.955;
+}
+function hasSpireAt(x, z) {
+  var h = heightAt(x, z);
+  if (h < 8 || h > 15) return false;
+  return hash2(Math.floor(x), Math.floor(z), SEED+6200) > 0.965;
+}
+function hasMushroomAt(x, z) {
+  var h = heightAt(x, z);
+  if (h < 2 || h > 8) return false;
+  var c = climateAt(x, z);
+  if (c.moist < 0.55 || c.temp < 0.45) return false;
+  return hash2(Math.floor(x), Math.floor(z), SEED+6300) > 0.982;
+}
+function hasFlowerAt(x, z) {
+  var h = heightAt(x, z);
+  if (h < 1.5 || h > 6) return false;
+  var c = climateAt(x, z);
+  if (c.temp > 0.56 && c.moist < 0.44) return false;
+  return hash2(Math.floor(x), Math.floor(z), SEED+6400) > 0.92;
+}
+function hasRockAt(x, z) {
+  var h = heightAt(x, z);
+  if (h < 6 || h > 15) return false;
+  return hash2(Math.floor(x), Math.floor(z), SEED+6500) > 0.97;
+}
+
+/* ============================================================ FEATURE SPAWNERS */
 function spawnTree(trunks, leaves, x, z) {
   var h = heightAt(x, z);
   var c = climateAt(x, z);
@@ -822,6 +948,71 @@ function spawnTree(trunks, leaves, x, z) {
     leaves.box(cx-0.22, h+3.4, cz-0.22, cx+0.22, h+4.1, cz+0.22, leafR*1.15, leafG*1.25, leafB);
   }
 }
+function spawnCrystal(acc, x, z) {
+  var h = heightAt(x, z);
+  // pick a hue per crystal cluster
+  var hueR = hash2(Math.floor(x), Math.floor(z), 7101);
+  var cr, cg, cb;
+  if (hueR < 0.33) { cr = 0.5; cg = 1.2; cb = 1.4; }      // cyan
+  else if (hueR < 0.66) { cr = 1.3; cg = 0.6; cb = 1.4; } // magenta
+  else { cr = 0.7; cg = 1.3; cb = 0.7; }                   // green
+  var shards = 3 + Math.floor(hash2(Math.floor(x), Math.floor(z), 7102) * 3);
+  for (var i = 0; i < shards; i++) {
+    var ox = (hash2(Math.floor(x*10+i), Math.floor(z*10), 7103) - 0.5) * 0.7;
+    var oz = (hash2(Math.floor(x*10), Math.floor(z*10+i), 7104) - 0.5) * 0.7;
+    var sh = 0.4 + hash2(i, 1, 7105) * 1.0;
+    var sw = 0.06 + hash2(i, 2, 7105) * 0.09;
+    acc.box(x+ox-sw, h, z+oz-sw, x+ox+sw, h+sh, z+oz+sw, cr, cg, cb);
+  }
+}
+function spawnSpire(acc, x, z) {
+  var h = heightAt(x, z);
+  var height = 1.5 + hash2(Math.floor(x), Math.floor(z), 8101) * 3.5;
+  var width = 0.25 + hash2(Math.floor(x), Math.floor(z), 8102) * 0.25;
+  // stack of tapering boxes
+  var segs = 4;
+  for (var i = 0; i < segs; i++) {
+    var t = i / segs;
+    var w = width * (1 - t * 0.7);
+    var y0 = h + (height * i / segs);
+    var y1 = h + (height * (i+1) / segs);
+    var tint = 0.72 + t * 0.15;
+    acc.box(x-w, y0, z-w, x+w, y1, z+w, tint, tint, tint*1.05);
+  }
+}
+function spawnMushroom(accStalk, accCap, x, z) {
+  var h = heightAt(x, z);
+  var height = 1.4 + hash2(Math.floor(x), Math.floor(z), 9101) * 1.0;
+  var capW = 0.45 + hash2(Math.floor(x), Math.floor(z), 9102) * 0.25;
+  accStalk.box(x-0.10, h, z-0.10, x+0.10, h+height, z+0.10, 1.2, 1.1, 0.95);
+  // cap
+  accCap.box(x-capW, h+height-0.1, z-capW, x+capW, h+height+0.35, z+capW, 1.3, 0.4, 0.4);
+  // spots
+  var spots = 3;
+  for (var i = 0; i < spots; i++) {
+    var ang = (i / spots) * Math.PI * 2 + 0.5;
+    var sx = x + Math.cos(ang) * capW * 0.5;
+    var sz = z + Math.sin(ang) * capW * 0.5;
+    accCap.box(sx-0.06, h+height+0.34, sz-0.06, sx+0.06, h+height+0.42, sz+0.06, 1.4, 1.4, 1.2);
+  }
+}
+function spawnFlower(acc, x, z) {
+  var h = heightAt(x, z);
+  var fr = hash2(Math.floor(x*3), Math.floor(z*3), 10101);
+  var r, g, b;
+  if (fr < 0.33) { r=1.3; g=0.5; b=0.7; }
+  else if (fr < 0.66) { r=1.3; g=1.1; b=0.4; }
+  else { r=0.75; g=0.75; b=1.35; }
+  acc.box(x-0.025, h, z-0.025, x+0.025, h+0.30, z+0.025, 0.5, 0.95, 0.4);
+  acc.box(x-0.09, h+0.28, z-0.09, x+0.09, h+0.42, z+0.09, r, g, b);
+}
+function spawnRock(acc, x, z) {
+  var h = heightAt(x, z);
+  var w1 = 0.25 + hash2(Math.floor(x), Math.floor(z), 11101) * 0.30;
+  var w2 = 0.15 + hash2(Math.floor(x), Math.floor(z), 11102) * 0.20;
+  acc.box(x-w1, h, z-w1, x+w1, h+0.30, z+w1, 0.8, 0.8, 0.85);
+  acc.box(x-w2, h, z-w2*0.8, x+w2, h+0.55, z+w2, 0.7, 0.7, 0.78);
+}
 
 /* ============================================================ CHUNKS */
 var scene, camera, renderer;
@@ -829,7 +1020,7 @@ var chunks = new Map();
 var chunkQueue = [];
 var lastPlayerChunk = '';
 
-var terrainMaterial, barkMaterial, leafMaterial, waterMaterial;
+var terrainMaterial, barkMaterial, leafMaterial, waterMaterial, crystalMaterial, mushroomCapMaterial;
 var itemMaterials = {};
 var waterPlane = null;
 var collectedItems = new Set();
@@ -870,18 +1061,43 @@ function buildChunk(cx, cz) {
   var group = new THREE.Group();
   var terrainGeo = buildChunkTerrainGeo(cx, cz);
   group.add(new THREE.Mesh(terrainGeo, terrainMaterial));
+
+  // Feature accumulators
   var trunkAccum = new GeoAccum();
   var leafAccum  = new GeoAccum();
+  var spireAccum = new GeoAccum();     // uses bark material (stone-ish tint)
+  var crystalAccum = new GeoAccum();   // uses crystal material
+  var mushStalkAccum = new GeoAccum();
+  var mushCapAccum = new GeoAccum();   // uses mushroom cap material
   var itemSprites = [];
+
   var baseX = cx * CHUNK, baseZ = cz * CHUNK;
+
+  // Trees & big features on 2-unit grid
   for (var lz = 0; lz < CHUNK; lz += 2) {
     for (var lx = 0; lx < CHUNK; lx += 2) {
       var jx = (hash2(baseX+lx, baseZ+lz, SEED+3001) - 0.5) * 0.9;
       var jz = (hash2(baseX+lx, baseZ+lz, SEED+3002) - 0.5) * 0.9;
       var wx = baseX + lx + 1 + jx, wz = baseZ + lz + 1 + jz;
       if (hasTreeAt(wx, wz)) spawnTree(trunkAccum, leafAccum, wx, wz);
+      else if (hasMushroomAt(wx, wz)) spawnMushroom(mushStalkAccum, mushCapAccum, wx, wz);
+      else if (hasCrystalAt(wx, wz)) spawnCrystal(crystalAccum, wx, wz);
+      else if (hasSpireAt(wx, wz)) spawnSpire(spireAccum, wx, wz);
+      else if (hasRockAt(wx, wz)) spawnRock(spireAccum, wx, wz);
     }
   }
+
+  // Small flowers on 1-unit grid
+  for (var fz = 0; fz < CHUNK; fz += 1) {
+    for (var fx = 0; fx < CHUNK; fx += 1) {
+      var fjx = (hash2(baseX+fx, baseZ+fz, SEED+3501) - 0.5) * 0.6;
+      var fjz = (hash2(baseX+fx, baseZ+fz, SEED+3502) - 0.5) * 0.6;
+      var fwx = baseX + fx + 0.5 + fjx, fwz = baseZ + fz + 0.5 + fjz;
+      if (hasFlowerAt(fwx, fwz)) spawnFlower(leafAccum, fwx, fwz);
+    }
+  }
+
+  // Items on 3-unit grid
   for (var iz = 0; iz < CHUNK; iz += 3) {
     for (var ix = 0; ix < CHUNK; ix += 3) {
       var jx2 = (hash2(baseX+ix, baseZ+iz, SEED+3011) - 0.5) * 1.4;
@@ -896,21 +1112,25 @@ function buildChunk(cx, cz) {
       itemSprites.push(sp);
     }
   }
-  var trunkMesh = null, leafMesh = null;
-  if (trunkAccum.pos.length > 0) {
-    trunkMesh = new THREE.Mesh(trunkAccum.toGeometry(), barkMaterial);
-    group.add(trunkMesh);
+
+  function addMesh(accum, mat) {
+    if (accum.pos.length === 0) return null;
+    var m = new THREE.Mesh(accum.toGeometry(), mat);
+    group.add(m);
+    return m;
   }
-  if (leafAccum.pos.length > 0) {
-    leafMesh = new THREE.Mesh(leafAccum.toGeometry(), leafMaterial);
-    group.add(leafMesh);
-  }
+  var trunkMesh     = addMesh(trunkAccum,     barkMaterial);
+  var leafMesh      = addMesh(leafAccum,      leafMaterial);
+  var spireMesh     = addMesh(spireAccum,     barkMaterial);
+  var crystalMesh   = addMesh(crystalAccum,   crystalMaterial);
+  var mushStalkMesh = addMesh(mushStalkAccum, barkMaterial);
+  var mushCapMesh   = addMesh(mushCapAccum,   mushroomCapMaterial);
+
   scene.add(group);
   return {
     key: cx + ',' + cz, cx: cx, cz: cz, group: group,
     terrainGeo: terrainGeo,
-    trunkGeo: trunkMesh ? trunkMesh.geometry : null,
-    leafGeo: leafMesh ? leafMesh.geometry : null,
+    meshes: [trunkMesh, leafMesh, spireMesh, crystalMesh, mushStalkMesh, mushCapMesh],
     items: itemSprites
   };
 }
@@ -918,8 +1138,7 @@ function buildChunk(cx, cz) {
 function disposeChunk(chunk) {
   scene.remove(chunk.group);
   if (chunk.terrainGeo) chunk.terrainGeo.dispose();
-  if (chunk.trunkGeo)   chunk.trunkGeo.dispose();
-  if (chunk.leafGeo)    chunk.leafGeo.dispose();
+  chunk.meshes.forEach(function(m){ if (m && m.geometry) m.geometry.dispose(); });
   for (var i = 0; i < chunk.items.length; i++) {
     if (chunk.items[i].material) chunk.items[i].material.dispose();
   }
@@ -986,7 +1205,7 @@ function makeItemSprite(typ, x, z) {
 var particlePool = [];
 function initParticles(scene) {
   var tex = cvsTex(16,16,tParticle,false);
-  for (var i = 0; i < 80; i++) {
+  for (var i = 0; i < 100; i++) {
     var mat = new THREE.SpriteMaterial({ map: tex, transparent:true, depthWrite:false,
       blending: THREE.AdditiveBlending });
     var s = new THREE.Sprite(mat);
@@ -1007,7 +1226,7 @@ function spawnParticles(x, y, z, count, color) {
     p.vx = Math.cos(ang) * spd; p.vz = Math.sin(ang) * spd;
     p.vy = 2 + Math.random() * 2;
     p.sprite.position.set(x, y, z);
-    p.sprite.material.color.set(color || 0xfff0a0);
+    p.sprite.material.color.setHex(color || 0xfff0a0);
     p.sprite.material.opacity = 1;
     p.sprite.scale.set(0.35, 0.35, 1);
     p.sprite.visible = true;
@@ -1027,6 +1246,18 @@ function updateParticles(dt) {
     p.sprite.scale.setScalar(0.35 * (0.4 + t*0.6));
     if (p.life <= 0) p.sprite.visible = false;
   }
+}
+/* Terrain-dependent particle colors */
+var GROUND_PARTICLE_COLORS = {
+  grass:  0x6fae58,
+  forest: 0x3a7a3a,
+  sand:   0xdcbf6e,
+  stone:  0x9a9aa2,
+  snow:   0xf0f5ff,
+  water:  0x7fbfe8
+};
+function groundColorAt(x, z) {
+  return GROUND_PARTICLE_COLORS[groundTypeAt(x, z)] || 0xd0d0d0;
 }
 
 /* ============================================================ BIRDS / CLOUDS */
@@ -1088,7 +1319,7 @@ function updateClouds(dt) {
 }
 
 /* ============================================================ PLAYER */
-var player = { x: 0.5, z: 0.5, y: 0, vx: 0, vz: 0, bob: 0, moving: false, facing: 1, stepTimer: 0 };
+var player = { x: 0.5, z: 0.5, y: 0, vx: 0, vz: 0, bob: 0, moving: false, facing: 1, stepTimer: 0, inWater: false };
 var inventory = { coin: 0, potion: 0, gem: 0, chest: 0 };
 var playerSprite = null;
 
@@ -1106,9 +1337,10 @@ function findSpawnPoint() {
   }
   return { x: 0.5, z: 0.5, y: Math.max(heightAt(0.5, 0.5), 4) };
 }
+/* Walkable now allows shallow water — depth <= 1.2 units below sea level */
 function walkable(x, z) {
   var h = heightAt(x, z);
-  if (h < SEA_LEVEL + 0.5) return false;
+  if (h < SEA_LEVEL - 1.2) return false;
   var curH = heightAt(player.x, player.z);
   if (Math.abs(h - curH) > MAX_STEP) return false;
   return true;
@@ -1154,16 +1386,21 @@ function updatePlayer(dt) {
     if (player.stepTimer <= 0 && spd > 2) {
       player.stepTimer = 0.28;
       sfxStep();
-      spawnParticles(player.x, player.y + 0.15, player.z, 2, 0xddcc99);
+      // Particle color depends on the ground beneath the player
+      var col = groundColorAt(player.x, player.z);
+      spawnParticles(player.x, player.y + 0.15, player.z, 3, col);
     }
   }
 
   if (Math.abs(player.vx) > 0.3) player.facing = player.vx > 0 ? 1 : -1;
   var targetY = heightAt(player.x, player.z);
+  // don't go below sea level visually — shallow water walking
+  if (targetY < SEA_LEVEL - 0.3) targetY = SEA_LEVEL - 0.3;
   player.y = lerp(player.y, targetY, 1 - Math.pow(0.0005, dt));
 
   player.moving = spd > 0.4;
   player.bob += dt * (player.moving ? 11 : 0);
+  player.inWater = targetY < SEA_LEVEL + 0.1;
 }
 
 /* ============================================================ CAMERA */
@@ -1177,10 +1414,8 @@ function clampPitch() {
   var hi = fpMode ? PITCH_MAX_FP : PITCH_MAX_TP;
   camPitch = clamp(camPitch, lo, hi);
 }
-
 function updateCamera(dt, immediate) {
   if (!camera) return;
-
   var cp = Math.cos(camPitch);
   var sp = Math.sin(camPitch);
   var lookDirX = -Math.sin(camYaw) * cp;
@@ -1188,15 +1423,13 @@ function updateCamera(dt, immediate) {
   var lookDirZ = -Math.cos(camYaw) * cp;
 
   if (fpMode) {
-    // First person: eye at player, looking along yaw/pitch
     var eyeY = player.y + FP_EYE_HEIGHT;
-    var tx = player.x, ty = eyeY, tz = player.z;
-    if (immediate) camera.position.set(tx, ty, tz);
+    if (immediate) camera.position.set(player.x, eyeY, player.z);
     else {
       var k = 1 - Math.pow(0.001, dt);
-      camera.position.x = lerp(camera.position.x, tx, k);
-      camera.position.y = lerp(camera.position.y, ty, k);
-      camera.position.z = lerp(camera.position.z, tz, k);
+      camera.position.x = lerp(camera.position.x, player.x, k);
+      camera.position.y = lerp(camera.position.y, eyeY, k);
+      camera.position.z = lerp(camera.position.z, player.z, k);
     }
     camera.lookAt(
       player.x + lookDirX * 12,
@@ -1204,17 +1437,13 @@ function updateCamera(dt, immediate) {
       player.z + lookDirZ * 12
     );
   } else {
-    // Third person orbit
     var eyeY2 = player.y + CAM_LOOK_K;
     var camTX = player.x - lookDirX * camDist;
     var camTY = eyeY2 - lookDirY * camDist;
     var camTZ = player.z - lookDirZ * camDist;
-
-    // prevent ground clipping
     var groundY = heightAt(camTX, camTZ) + 1.2;
     if (camTY < groundY) camTY = groundY;
     if (camTY < SEA_LEVEL + 1.5) camTY = SEA_LEVEL + 1.5;
-
     if (immediate) camera.position.set(camTX, camTY, camTZ);
     else {
       var k2 = 1 - Math.pow(0.003, dt);
@@ -1229,12 +1458,13 @@ function updateCamera(dt, immediate) {
     );
   }
 }
-
 function setFpMode(on) {
   fpMode = !!on;
   if (fpMode) document.body.classList.add('fp');
   else document.body.classList.remove('fp');
   fpToggleBtn.textContent = fpMode ? 'VIEW: 1ST' : 'VIEW: 3RD';
+  if (fpMode) fpToggleBtn.classList.add('fp-on');
+  else fpToggleBtn.classList.remove('fp-on');
   clampPitch();
   if (playerSprite) playerSprite.visible = !fpMode;
   console.log('[camera] ' + (fpMode ? 'first' : 'third') + ' person');
@@ -1318,13 +1548,11 @@ function endPointer(e){
 document.addEventListener('pointerup', endPointer, { passive:false });
 document.addEventListener('pointercancel', endPointer, { passive:false });
 document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
-
 window.addEventListener('keydown', function(e){
   keys[e.key.toLowerCase()] = true;
   if (e.key === 'f' || e.key === 'F') setFpMode(!fpMode);
 });
 window.addEventListener('keyup', function(e){ keys[e.key.toLowerCase()] = false; });
-
 fpToggleBtn.addEventListener('click', function(){ setFpMode(!fpMode); });
 
 var hintHidden = false;
@@ -1377,7 +1605,7 @@ var miniCtx = minimapEl.getContext('2d');
 function drawMinimap() {
   var W = minimapEl.width, H = minimapEl.height;
   miniCtx.clearRect(0, 0, W, H);
-  var RANGE = 120;
+  var RANGE = 140;
   var step = RANGE / W;
   for (var py = 0; py < H; py += 2) {
     for (var px = 0; px < W; px += 2) {
@@ -1394,20 +1622,27 @@ function drawMinimap() {
       miniCtx.fillRect(px, py, 2, 2);
     }
   }
-  // player
-  miniCtx.fillStyle = '#ff4444';
-  miniCtx.beginPath();
-  miniCtx.arc(W/2, H/2, 3, 0, Math.PI*2);
-  miniCtx.fill();
-  miniCtx.strokeStyle = '#fff';
+  // compass ring
+  miniCtx.strokeStyle = 'rgba(255,255,255,.2)';
   miniCtx.lineWidth = 1;
+  miniCtx.beginPath();
+  miniCtx.arc(W/2, H/2, W/2 - 4, 0, Math.PI*2);
   miniCtx.stroke();
   // camera direction arrow
   var dirX = -Math.sin(camYaw), dirZ = -Math.cos(camYaw);
   miniCtx.strokeStyle = '#ffea4a';
+  miniCtx.lineWidth = 2;
   miniCtx.beginPath();
   miniCtx.moveTo(W/2, H/2);
-  miniCtx.lineTo(W/2 + dirX * 10, H/2 + dirZ * 10);
+  miniCtx.lineTo(W/2 + dirX * 16, H/2 + dirZ * 16);
+  miniCtx.stroke();
+  // player
+  miniCtx.fillStyle = '#ff4444';
+  miniCtx.beginPath();
+  miniCtx.arc(W/2, H/2, 3.5, 0, Math.PI*2);
+  miniCtx.fill();
+  miniCtx.strokeStyle = '#fff';
+  miniCtx.lineWidth = 1;
   miniCtx.stroke();
 }
 
@@ -1452,14 +1687,12 @@ function loop(now) {
   updateBirds(dt, now / 1000);
   updateParticles(dt);
 
-  if (playerSprite) {
-    if (!fpMode) {
-      var bobY = player.moving ? Math.abs(Math.sin(player.bob)) * 0.10 : 0;
-      playerSprite.position.set(player.x, player.y + bobY, player.z);
-      var bsx = playerSprite.userData.baseScaleX || 1.2;
-      var bsy = playerSprite.userData.baseScaleY || 1.8;
-      playerSprite.scale.set(bsx * player.facing, bsy, 1);
-    }
+  if (playerSprite && !fpMode) {
+    var bobY = player.moving ? Math.abs(Math.sin(player.bob)) * 0.10 : 0;
+    playerSprite.position.set(player.x, player.y + bobY, player.z);
+    var bsx = playerSprite.userData.baseScaleX || 1.2;
+    var bsy = playerSprite.userData.baseScaleY || 1.8;
+    playerSprite.scale.set(bsx * player.facing, bsy, 1);
   }
 
   var time = now / 1000;
@@ -1537,20 +1770,25 @@ function boot() {
   setBoot(5, 'CHECKING TEXTURES…');
 
   probeAllTextures(TEX_PATHS).then(function(texMap){
-    // Log results clearly
     var found = 0;
+    var statusHtml = '';
     console.log('[textures] probing ' + TEX_PATHS.length + ' files:');
     TEX_PATHS.forEach(function(p){
       var r = texMap[p];
       if (r.ok) {
         found++;
         console.log('  ✓ ' + p + '  ' + r.w + 'x' + r.h);
+        statusHtml += '<div><span class="ok">✓</span> ' + p.replace('assets/', '') + '  ' + r.w + 'x' + r.h + '</div>';
       } else {
         console.warn('  ✗ ' + p + '  (' + (r.reason || 'missing') + ')');
+        statusHtml += '<div><span class="miss">✗</span> ' + p.replace('assets/', '') + '  (' + (r.reason || 'missing') + ')</div>';
       }
     });
-    console.log('[textures] ' + found + '/' + TEX_PATHS.length + ' found, ' +
-                (TEX_PATHS.length - found) + ' using procedural fallback');
+    bootTexList.innerHTML = statusHtml;
+    var missCount = TEX_PATHS.length - found;
+    console.log('[textures] ' + found + '/' + TEX_PATHS.length + ' found');
+    texStatusEl.innerHTML = '<span class="ok">' + found + ' ok</span>' +
+      (missCount > 0 ? ' · <span class="miss">' + missCount + ' fallback</span>' : '');
 
     setBoot(20, 'CREATING RENDERER…');
     setTimeout(function(){
@@ -1581,7 +1819,6 @@ function boot() {
           ambientLight = new THREE.AmbientLight(0xffffff, 0.28);
           scene.add(ambientLight);
 
-          // Materials with procedural fallbacks
           terrainMaterial = new THREE.MeshLambertMaterial({
             map: cvsTex(16, 16, tGrass), vertexColors: true
           });
@@ -1591,12 +1828,22 @@ function boot() {
           leafMaterial = new THREE.MeshLambertMaterial({
             map: cvsTex(16, 16, tLeaves), vertexColors: true
           });
+          crystalMaterial = new THREE.MeshLambertMaterial({
+            vertexColors: true,
+            emissive: 0x446688,
+            emissiveIntensity: 0.55
+          });
+          mushroomCapMaterial = new THREE.MeshLambertMaterial({
+            vertexColors: true,
+            emissive: 0x330000,
+            emissiveIntensity: 0.35
+          });
+
           itemMaterials.coin   = new THREE.SpriteMaterial({ map: cvsTex(12,12,tCoin,false),   transparent:true, alphaTest:0.4 });
           itemMaterials.potion = new THREE.SpriteMaterial({ map: cvsTex(12,12,tPotion,false), transparent:true, alphaTest:0.4 });
           itemMaterials.gem    = new THREE.SpriteMaterial({ map: cvsTex(12,12,tGem,false),    transparent:true, alphaTest:0.4 });
           itemMaterials.chest  = new THREE.SpriteMaterial({ map: cvsTex(12,12,tChest,false),  transparent:true, alphaTest:0.4 });
 
-          // Apply probed textures
           applyProbedTexture(terrainMaterial, texMap['assets/grass.png']);
           applyProbedTexture(barkMaterial,    texMap['assets/tree_bark.png']);
           applyProbedTexture(leafMaterial,    texMap['assets/tree_leaves.png']);
@@ -1605,22 +1852,18 @@ function boot() {
           applyProbedSprite(itemMaterials.gem,    texMap['assets/gem.png']);
           applyProbedSprite(itemMaterials.chest,  texMap['assets/chest.png']);
 
-          // Menu background
           if (texMap['assets/bg.png'] && texMap['assets/bg.png'].ok) {
             menuEl.style.backgroundImage = "url('assets/bg.png')";
             console.log('[menu] bg.png applied');
           } else {
-            // gradient fallback
             menuEl.style.backgroundImage =
-              'linear-gradient(180deg, #4a8fd7 0%, #7fb8e8 40%, #6fae58 60%, #3d6b2c 100%)';
-            console.log('[menu] using gradient fallback (bg.png missing)');
+              'linear-gradient(180deg, #4a8fd7 0%, #7fb8e8 35%, #6fae58 65%, #3d6b2c 100%)';
+            console.log('[menu] using gradient fallback');
           }
 
-          // Water
           waterPlane = buildWaterPlane(scene);
           applyProbedTexture(waterMaterial, texMap['assets/water.png']);
 
-          // Player sprite
           var fallbackTex = cvsTex(16, 24, tPlayerFallback, false);
           var pMat = new THREE.SpriteMaterial({
             map: fallbackTex, transparent:true, alphaTest:0.5, depthWrite:true
@@ -1663,18 +1906,7 @@ function boot() {
               if (chunks.has(job.key)) continue;
               chunks.set(job.key, buildChunk(job.cx, job.cz));
             }
-            // precompile shaders
             renderer.render(scene, camera);
-
-            var heights = [];
-            for (var s = 0; s < 100; s++) {
-              heights.push(heightAt(Math.random()*200-100, Math.random()*200-100));
-            }
-            var minH = Math.min.apply(null, heights);
-            var maxH = Math.max.apply(null, heights);
-            var under = heights.filter(function(v){return v<SEA_LEVEL;}).length;
-            console.log('[terrain] min='+minH.toFixed(1)+' max='+maxH.toFixed(1)+
-                        ' underwater='+under+'%');
 
             hudMode.textContent = 'WEBGL 3D';
             hudMode.style.color = '#7cffa0';
